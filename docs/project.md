@@ -11,10 +11,11 @@
 - Powered via 12Vdc external power source
 
 ## Technologies
-- Zephyr RTOS
+- Zephyr RTOS as platform
 - C++
 - Protobuf specifies the communication protocols between host and target to allow for:
-    - Controlling channels
+    - Controlling relay channels
+    - Controlling FET channels
     - Controlling USB Switch
     - Controlling SD Switch
     - Sending firmware packages for firmware upgrade
@@ -23,21 +24,31 @@
     - Alternatives (?)
 - Kicad used for hardware development
 
+## Architecture
+
 ## Breakdown into smaller steps
-### mcuboot project
+
+This section breaks down the bigger picture project into smaller independent project that can be implemented and tested by their own.
+
+### Project: python script
+- A python script shall be developed to allow for interacting (testing) the embedded application
+- This script should allow to interact with all of the features of the device via CLI
+
+### Project: mcuboot
 - Start by making mcuboot Zephyr example work on target board
 - Develop protobuf for communication between host and target to exchange firmware packages, for firmware upgrade
 - Implement python script to parse input binary (built firmware) and send it to target via serial UART using protobuf specification
 - Implement test setup where there are 2 built binaries that blink different LEDs and switch between firmwares using python script
 
-### Bluetooth project
+### Project: bluetooth
 - Choose one of the Zephyr Bluetooth examples to run on target board
 - Device will be a Bluetooth scannable and connectable advertiser
 - Project a Bluetooth profile
 
-### Hardware design
-#### Kicad circuit design
-- Study Kicad
+### Project: development of custom hardware
+
+#### Kicad circuit and board design
+- Study Kicad to begin with
 #### Zephyr custom board definition
 - Develop simple blink LED for custom board
 

@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-set(BOARD esp32c3_devkitm)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(zbox)
 
@@ -20,5 +19,5 @@ set(SRC_FILES
 )
 
 #target_include_directories(app PRIVATE ${INCLUDE_DIRS})
-#zephyr_nanopb_sources(app proto/sin_wave.proto)
+#zephyr_nanopb_sources(app proto/protocol.proto)
 target_sources(app PRIVATE ${SRC_FILES})

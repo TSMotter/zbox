@@ -6,6 +6,7 @@ global_flag_b_build=0
 global_flag_r_rebuild=0
 global_flag_l_flash=0
 global_flag_v_verbose=0
+global_flag_board=esp32c3_devkitm
 
 #################################################################################
 
@@ -25,6 +26,7 @@ function print_help()
     -r, --rebuild       [r]euild
     -l, --flash         f[l]ash binary to target
     -v, --verbose       [v]erbose
+    --board <BOARD>     Defines the Zephyr target [board] to build to
 
 EOF
 
@@ -75,7 +77,7 @@ function func_format()
     # xargs executes echo by default. You many also instruct it to read data from a file 
     # instead of stdin.
 
-    find . -iname '*.pp' | grep --invert-match './build' | grep --invert-match 'external' | xargs clang-format -i -style=file
+    find . -iname '*.*pp' | grep --invert-match './build' | grep --invert-match 'external' | xargs clang-format -i -style=file
 }
 
 ################################################################################
@@ -87,7 +89,7 @@ function func_build()
 {
     print_banner "Building code"
 
-    west build --pristine
+    west build --board="$global_flag_board" --pristine --sysbuild
 }
 
 ################################################################################
@@ -143,6 +145,16 @@ function gather_params()
             -v | --verbose)
                 global_flag_v_verbose=1
                 shift
+                ;;
+            --board)
+                if [ -z "$2" ]; then
+                    echo "Error: The '--board' option requires an argument."
+                    print_help
+                    exit 1
+                fi
+                global_flag_board=$2
+                echo "The chosen board is: $global_flag_board"
+                shift 2
                 ;;
             -h | --help)
                 print_help

@@ -1,6 +1,6 @@
 #include <zephyr/sys/printk.h>
 
-int main(int argc, char **argv)
+int main(void)
 {
     printk("Hello World\n");
 
