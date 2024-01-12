@@ -1,0 +1,8 @@
+
+#include "../../../boards/stm32f4_disco.overlay"
+
+/ {
+    chosen {
+        zephyr,code-partition = &boot_partition;
+    };
+};

@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(zbox)
 
+if(NOT (DEFINED SYSBUILD))
+  message(FATAL_ERROR "This project must be built with sysbuild.")
+endif()
+
 set(SRC_DIR "src")
 #set(INCLUDE_DIRS
 #    "${SRC_DIR}/lib"

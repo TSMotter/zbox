@@ -33,6 +33,54 @@
     - Example:
         - `west build --sysbuild ... -- -Dmy_sample_CONFIG_FOO=BAR`
 
+## Sysbuild configuration
+
+### sysbuild.conf
+- It is possible to create a sysbuild.conf file to define Kconfig-like symbols that are relevant at a sysbuild level
+
+### sysbuild folder
+- It is possible to create a folder named `sysbuild` in the root of the project
+- This folder might contain configurations that can be used during a build, targeting one specific image being built
+- There are 2 approaches:
+    - Approach 1:
+    ```bash
+    # Template
+    zbox/sysbuild/<image_name>.overlay
+    zbox/sysbuild/<image_name>.conf
+
+    # Example:
+    zbox/sysbuild/mcuboot.overlay
+    zbox/sysbuild/mcuboot.conf
+    ```
+    - This approach will append configurations defined in `zbox/sysbuild/**` with the original configurations defined in the image's root directory
+    - In the example of mcuboot given above, it will append the conf file defined in `zbox/sysbuild/mcuboot.conf` with the one present on `zephyrproject/bootloader/mcuboot/boot/zephyr/prj.conf`
+    - This allows for a less invasive approach
+
+    - Approach 2:
+    ```bash
+    # Template
+    zbox/sysbuild/<image_name>/boards/<board>.overlay
+    zbox/sysbuild/<image_name>/boards/<board>.conf
+    zbox/sysbuild/<image_name>/prj.conf
+
+    # Example:
+    zbox/sysbuild/
+                 └── mcuboot
+                     ├── boards
+                     │   ├── esp32c3_devkitm.conf
+                     │   ├── esp32c3_devkitm.overlay
+                     │   └── stm32f4_disco.overlay
+                     └── prj.conf
+    ```
+    - This approach will override the configurations defined in that image's original root directory
+    - In the example of mcuboot given above, it will stop using the configurations defined in `zephyrproject/bootloader/mcuboot/boot/zephyr/prj.conf` and `zephyrproject/bootloader/mcuboot/boot/zephyr/boards/**` and will only use the configurations defined within `zbox/sysbuild/mcuboot/**`
+    - This allows user to take full control of the configuration of one of sysbuild's projects being built
+
+- Unfortunately, because I want to support more then 1 board at the same time in the same project, the only approach viable seems to be approach 2.
+    - Using approach 1 in my case works for `stm32f4_disco` but fails for `esp32c3_devkitm`
+    - If there was a way to use approach 1 + specify it to take effect only for specific boards, that would be ideal. Something like `zbox/sysbuild/mcuboot_stm32f4_disco.overlay`
+    - Because this is not possible, using approach 2 is the way to go. The bad part is that I had to copy most part of the contents of the original mcuboot conf and overlay files
+
 ## mcuboot with Zephyr
 - Requirements to build mcuboot within a Zephyr application:
 - Make sure there are flash partitions defined in the board's device tree
