@@ -42,7 +42,7 @@
 - It is possible to create a folder named `sysbuild` in the root of the project
 - This folder might contain configurations that can be used during a build, targeting one specific image being built
 - There are 2 approaches:
-    - Approach 1:
+    - **Approach 1:**
     ```bash
     # Template
     zbox/sysbuild/<image_name>.overlay
@@ -56,7 +56,7 @@
     - In the example of mcuboot given above, it will append the conf file defined in `zbox/sysbuild/mcuboot.conf` with the one present on `zephyrproject/bootloader/mcuboot/boot/zephyr/prj.conf`
     - This allows for a less invasive approach
 
-    - Approach 2:
+    - **Approach 2:**
     ```bash
     # Template
     zbox/sysbuild/<image_name>/boards/<board>.overlay
@@ -81,7 +81,16 @@
     - If there was a way to use approach 1 + specify it to take effect only for specific boards, that would be ideal. Something like `zbox/sysbuild/mcuboot_stm32f4_disco.overlay`
     - Because this is not possible, using approach 2 is the way to go. The bad part is that I had to copy most part of the contents of the original mcuboot conf and overlay files
 
-## mcuboot with Zephyr
+## mcuboot
+- mcuboot is a secure bootloader for 32-bit microcontrollers
+- It is in mcuboot's scope
+    - To define on a known image format and memory layout
+    - Take decisions of whether to perform a swap, or a rollback, an image integrity check, etc.
+- It is NOT in mcuboot's scope:
+    - Define how the images will be managed
+    - Define how the images will end up in the device's memory so that they can be swaped to
+
+
 - Requirements to build mcuboot within a Zephyr application:
 - Make sure there are flash partitions defined in the board's device tree
 ```
@@ -93,3 +102,20 @@ scratch_partition: the scratch slot (if needed)
 - Set `CONFIG_BOOTLOADER_MCUBOOT` KConfig in prj.conf
 - The 2 image slots must be contiguous
 - If mcuboot is used as stage1 bootloader, boot partition should be configured so that it is ran first after a reset
+- [The mcuboot design page](https://docs.mcuboot.com/design.html) will describe in deatail:
+    - Bootloader design, high level operation and limitations
+    - Image format
+    - Flash layout and partitions dimensioning based on: memory sector sizes, flash wear and amount of desirable updates
+    - Swap strategies and rollback capabilities
+    - Boot swap types and how the bootloader decides which action to take upon reboot (image trailers)
+    - Security capabilities
+
+- I'll be using a [Swap using scratch](https://docs.mcuboot.com/design.html#image-swap-using-scratch) strategy
+
+## mcumgr
+- mcumgr is a management library for 32-bit MCUs.
+- The goal of mcumgr is to define a common management infrastructure with pluggable transport and encoding components.
+- mcumgr provides definitions and handlers for some core commands like image management
+- There is a [mcumgr CLI tool written in Go](https://github.com/apache/mynewt-mcumgr-cli) that allows to update an image over BLE to devices running an mcumgr server.
+- Alternatively there is a [mcumgr client written in Rust](https://github.com/vouch-opensource/mcumgr-client/) as well that allows to update an image over a serial port to devices running an mcumgr server. (preferred over CLI)
+- The management is based on the Simple Management Protocol (SMP)
