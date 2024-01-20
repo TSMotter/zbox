@@ -115,7 +115,247 @@ scratch_partition: the scratch slot (if needed)
 ## mcumgr
 - mcumgr is a management library for 32-bit MCUs.
 - The goal of mcumgr is to define a common management infrastructure with pluggable transport and encoding components.
+- The management is based on the Simple Management Protocol (SMP)
 - mcumgr provides definitions and handlers for some core commands like image management
 - There is a [mcumgr CLI tool written in Go](https://github.com/apache/mynewt-mcumgr-cli) that allows to update an image over BLE to devices running an mcumgr server.
+- Zephyr tutorials are all based in the CLI tool written in Go, but at the same time the documentation itself states that this tool is for evaluation only and has bugs so it should not be used in production environments.
 - Alternatively there is a [mcumgr client written in Rust](https://github.com/vouch-opensource/mcumgr-client/) as well that allows to update an image over a serial port to devices running an mcumgr server. (preferred over CLI)
-- The management is based on the Simple Management Protocol (SMP)
+- Both tools were installed in my experience in order to play with both of them:
+```bash
+# Install mcumgr CLI tool written in Go
+ggm@gAN515-52:~ $ sudo apt install golang-go
+ggm@gAN515-52:~ $ echo "PATH=$PATH:$HOME/go/bin" >> ~/.bashrc
+ggm@gAN515-52:~ $ go install github.com/apache/mynewt-mcumgr-cli/mcumgr@latest
+ggm@gAN515-52:~ $ which mcumgr
+/home/ggm/go/bin/mcumgr
+
+# Install mcumgr-client Rust tool (alternatively could install from source, compiling rust code)
+ggm@gAN515-52:~ $ wget https://github.com/vouch-opensource/mcumgr-client/releases/download/v0.0.3/mcumgr-client-linux-x86.zip -P ~/Downloads/
+ggm@gAN515-52:~ $ unzip ~/Downloads/mcumgr-client-linux-x86.zip -d ~/Downloads/
+ggm@gAN515-52:~ $ sudo cp Downloads/mcumgr-client-linux-x86/mcumgr-client /usr/bin/
+ggm@gAN515-52:~ $ which mcumgr-client 
+/usr/bin/mcumgr-client
+```
+
+## Practical proof of concept
+- Now it's time to put it all together in a minimal working example
+- References:
+    - [Zephyr mcumgr documentation](https://docs.zephyrproject.org/latest/services/device_mgmt/mcumgr.html)
+    - [Zephyr mcumgr example](https://docs.zephyrproject.org/latest/samples/subsys/mgmt/mcumgr/smp_svr/README.html)
+    - [mcuboot information about image signing](https://docs.mcuboot.com/readme-zephyr.html)
+- Created a project which is a combination between the `blinky` sample and the `subsys/mgmt/mcumgr/smp_svr` sample
+- This example will use the [image management](https://docs.zephyrproject.org/latest/services/device_mgmt/mcumgr.html#image-management) and the [statistics management](https://docs.zephyrproject.org/latest/services/device_mgmt/mcumgr.html#image-management) capabilities of the mcumgr.
+- The plan was to produce 2 binaries, one which blinks the green LED at 1Hz (green bin) and another one that would blink the blue LED at 1Hz (blue bin) and swap between them using SMP protocol
+- Pulled in the main KConfig configurations from the SMP Server sample in order to make sure that I have in fact a SMP server running in my embedded device
+- The final sample code can be seen in `main.cpp`
+- I then proceeded to build and flash the (mcuboot + green bin) in the target
+```bash
+./bbuild.sh -f -r -l --board stm32f4_disco
+```
+- After this is done, if you open a serial port at the console UART and reset the target, it's possible to see mcuboot logs, indicating the success of the project configuration
+- Green LED should be blinking
+- In order to check that the CLI/Client SMP tools are working properly as well as that my device in fact has an SMP server running, I performed some of the following basic commands
+```bash
+# Create a "conn device configuration" so that I do not have to specify it all the time
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr conn add ggmconn type="serial" connstring="dev=/dev/ttyUSB0,baud=115200,mtu=256"
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn echo hello
+hello
+
+# Testing the Statistics management capabilities
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn stat list
+stat groups:
+    smp_server_stats
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn stat smp_server_stats
+stat group: smp_server_stats
+      1928 counter_stat
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn stat smp_server_stats
+stat group: smp_server_stats
+      1931 counter_stat
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn stat smp_server_stats
+stat group: smp_server_stats
+      1931 counter_stat
+
+# Testing the Image management capabilities
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn image list
+Images:
+ image=0 slot=0
+    version: 0.0.0
+    bootable: true
+    flags: active confirmed
+    hash: 689de5a4a9d7cb32fb7f76bb3cbf275a3bce1ced2f7650f35b3480e6551a549a
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr-client -d /dev/ttyUSB0 list
+mcumgr-client 0.0.3, Copyright © 2023 Vouch.io LLC
+
+19:37:29 [INFO] send image list request
+19:37:29 [INFO] response: {
+  "images": [
+    {
+      "hash": [
+        104,
+        157,
+        229,
+        164,
+        169,
+        215,
+        203,
+        50,
+        251,
+        127,
+        118,
+        187,
+        60,
+        191,
+        39,
+        90,
+        59,
+        206,
+        28,
+        237,
+        47,
+        118,
+        80,
+        243,
+        91,
+        52,
+        128,
+        230,
+        85,
+        26,
+        84,
+        154
+      ],
+      "slot": 0,
+      "active": true,
+      "pending": false,
+      "version": "0.0.0",
+      "bootable": true,
+      "confirmed": true,
+      "permanent": false
+    }
+  ],
+  "splitStatus": 0
+}
+```
+- Then the next step is to rebuild the software, but now changing the compilation symbols in order to build the blue bin.
+- If it is not already signed, sign the binary and transfer it to the target via SMP protocol
+```bash
+# Already signed:
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ find build -iname "*sign*"
+build/zbox/zephyr/zephyr.signed.bin
+build/zbox/zephyr/zephyr.signed.hex
+
+# Manually signing it would be something like this:
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ west sign -t imgtool -- --key ../bootloader/mcuboot/root-rsa-2048.pem
+
+# Option 1: Transfer the binary to the target with mcumgr CLI tool
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn image upload -e build/zbox/zephyr/zephyr.signed.bin
+ 48.33 KiB / 48.33 KiB [========================================================================================================================] 100.00% 1.93 KiB/s 25s
+Done
+
+
+# Option 2: Transfer the binary to the target with mcumgr-client
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr-client -s 1 -m 512 -l 128 -d /dev/ttyUSB0 upload build/zbox/zephyr/zephyr.signed.bin 
+mcumgr-client 0.0.3, Copyright © 2023 Vouch.io LLC
+
+19:49:41 [INFO] upload file: build/zbox/zephyr/zephyr.signed.bin
+19:49:41 [INFO] flashing to slot 1
+19:49:41 [INFO] 49488 bytes to transfer
+  [00:00:07] [================================================================================================================================] 48.33 KiB/48.33 KiB (0s)19:49:49 [INFO] upload took 8s
+```
+
+- Sometimes the process might fail. In that case start it over:
+```bash
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr-client -s 1 -m 512 -l 128 -d /dev/ttyUSB0 upload build/zbox/zephyr/zephyr.signed.bin 
+mcumgr-client 0.0.3, Copyright © 2023 Vouch.io LLC
+
+19:49:32 [INFO] upload file: build/zbox/zephyr/zephyr.signed.bin
+19:49:32 [INFO] flashing to slot 1
+19:49:32 [INFO] 49488 bytes to transfer
+19:49:37 [ERROR] Error: read error, expected: 6, read: 91
+```
+- Check that the second image is now present on the other slot of target's flash
+```bash
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn image list
+Images:
+ image=0 slot=0
+    version: 0.0.0
+    bootable: true
+    flags: active confirmed
+    hash: 689de5a4a9d7cb32fb7f76bb3cbf275a3bce1ced2f7650f35b3480e6551a549a
+ image=0 slot=1
+    version: 0.0.0
+    bootable: true
+    flags: 
+    hash: 12256572ab7223930fdbe7f27167307a4131ea9eba66756f9c8782ae7c5f6449
+Split status: N/A (0)
+```
+- Indicate to mcuboot to perform the image SWAP on the next boot and restart the board (notice the change on the "flags" field of the image on slot=1)
+```bash
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn image test 12256572ab7223930fdbe7f27167307a4131ea9eba66756f9c8782ae7c5f6449
+Images:
+ image=0 slot=0
+    version: 0.0.0
+    bootable: true
+    flags: active confirmed
+    hash: 689de5a4a9d7cb32fb7f76bb3cbf275a3bce1ced2f7650f35b3480e6551a549a
+ image=0 slot=1
+    version: 0.0.0
+    bootable: true
+    flags: pending
+    hash: 12256572ab7223930fdbe7f27167307a4131ea9eba66756f9c8782ae7c5f6449
+Split status: N/A (0)
+```
+
+- After the reboot wait a little bit for mcuboot to perform the image swap and then the Blue LED should be blinking
+- The image status should be like this
+- It's possible to see that the images were swapped!
+```bash
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn image list
+Images:
+ image=0 slot=0
+    version: 0.0.0
+    bootable: true
+    flags: active
+    hash: 12256572ab7223930fdbe7f27167307a4131ea9eba66756f9c8782ae7c5f6449
+ image=0 slot=1
+    version: 0.0.0
+    bootable: true
+    flags: confirmed
+    hash: 689de5a4a9d7cb32fb7f76bb3cbf275a3bce1ced2f7650f35b3480e6551a549a
+Split status: N/A (0)
+```
+
+- At this point, if you restart the target again, it'll go back to Green bin.
+- In order for it to swap to Blue bin and stay there, you should "confirm" that that binary os "OK", indicating to the bootloader that is should NOT perform a rollack in the next reboot
+- To swap and confirm the current image: (notice the change in the flags field)
+```bash
+# Swap
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn image test 12256572ab7223930fdbe7f27167307a4131ea9eba66756f9c8782ae7c5f6449
+Images:
+ image=0 slot=0
+    version: 0.0.0
+    bootable: true
+    flags: active confirmed
+    hash: 689de5a4a9d7cb32fb7f76bb3cbf275a3bce1ced2f7650f35b3480e6551a549a
+ image=0 slot=1
+    version: 0.0.0
+    bootable: true
+    flags: pending
+    hash: 12256572ab7223930fdbe7f27167307a4131ea9eba66756f9c8782ae7c5f6449
+Split status: N/A (0)
+# Confirm the current
+(.venv) ggm@gAN515-52:~/zephyrproject/zbox (master)$ mcumgr -c ggmconn image confirm ""
+Images:
+ image=0 slot=0
+    version: 0.0.0
+    bootable: true
+    flags: active confirmed
+    hash: 12256572ab7223930fdbe7f27167307a4131ea9eba66756f9c8782ae7c5f6449
+ image=0 slot=1
+    version: 0.0.0
+    bootable: true
+    flags: 
+    hash: 689de5a4a9d7cb32fb7f76bb3cbf275a3bce1ced2f7650f35b3480e6551a549a
+Split status: N/A (0)
+
+```
