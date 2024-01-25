@@ -1,7 +1,0 @@
-/* COMPIED FROM ORIGINAL (@mcuboot) */
-
-/ {
-    chosen {
-        zephyr,code-partition = &boot_partition;
-    };
-};

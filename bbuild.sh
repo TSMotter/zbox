@@ -6,7 +6,7 @@ global_flag_b_build=0
 global_flag_r_rebuild=0
 global_flag_l_flash=0
 global_flag_v_verbose=0
-global_flag_board=esp32c3_devkitm
+global_flag_board=stm32f4_disco
 
 #################################################################################
 
