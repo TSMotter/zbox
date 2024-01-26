@@ -89,7 +89,7 @@ function func_build()
 {
     print_banner "Building code"
 
-    west build --board="$global_flag_board" --pristine --sysbuild
+    west build --board="$global_flag_board" --pristine --sysbuild  -- -DSB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\""$(pwd)/../privkeys/zbox-root-rsa-2048.pem"\"
 }
 
 ################################################################################

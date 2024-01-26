@@ -34,8 +34,8 @@ STATS_SECT_DECL(smp_server_stats) smp_server_stats;
  * Switch between GREEN_BIN and BLUE_BIN
  ***************************************************************************************************/
 // Choose one LED to blink
-// #define GREEN_BIN
-#define BLUE_BIN
+#define GREEN_BIN
+// #define BLUE_BIN
 
 #ifdef GREEN_BIN
 

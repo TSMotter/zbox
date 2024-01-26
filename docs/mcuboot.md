@@ -497,7 +497,7 @@ Split status: N/A (0)
 
 
 ## Moving away from deafult keys
-- When upgrading to an image (or even boot it, if MCUBOOT_VALIDATE_PRIMARY_SLOT is enabled), the images must be signed
+- In order to upgrade to an image (or even boot it, if MCUBOOT_VALIDATE_PRIMARY_SLOT is enabled), the images must be signed.
 - mcuboot is distributes with example keys which must NOT be used for real applications
 - It is possible to generate new key pair with default tools like `openssl` but it is also possible to use the tool provided by mcuboot, `imgtool.py`
 ```bash
@@ -511,3 +511,19 @@ Split status: N/A (0)
 - Now you need to indicate to the build system where the custom key is located so that it can extract the public key and insert it into mcuboot binary
 - To do this use the KConfig option `SB_CONFIG_BOOT_SIGNATURE_KEY_FILE="path/to/pem/file"` in `sysbuild.conf`
 - After making this change it's possible to see the following log during the build process: `MCUBoot bootloader key file: /home/ggm/zephyrproject/zbox/zbox-root-rsa-2048.pem`
+- In a later stage, I managed to keep my keys in a private repository and define `SB_CONFIG_BOOT_SIGNATURE_KEY_FILE` in the west build command line.
+    - The command line being used to build can be seen in `bbuild.sh` script
+- To work like this, clone the private repository at the same level as the `zbox` repository.
+- If you try to perform a DFU using an image signed with the wrong key, you'll see the following in the mcuboot terminal after a system reboot:
+```bash
+*** Booting Zephyr OS build zephyr-v3.5.0 ***
+I: Starting bootloader
+I: Primary image: magic=good, swap_type=0x2, copy_done=0x1, image_ok=0x1
+I: Scratch: magic=unset, swap_type=0x1, copy_done=0x3, image_ok=0x3
+I: Boot source: none
+I: Image index: 0, Swap type: test
+E: Image in the secondary slot is not valid!
+I: Bootloader chainload address offset: 0x40000
+I: Jumping to the first image slot
+*** Booting Zephyr OS build zephyr-v3.5.0 ***
+```
